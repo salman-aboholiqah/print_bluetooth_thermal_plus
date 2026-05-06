@@ -9,7 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:print_bluetooth_thermal_plus/print_bluetooth_thermal.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

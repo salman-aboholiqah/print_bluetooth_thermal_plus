@@ -1,3 +1,15 @@
+## [1.0.0] – 2026-05-06
+
+Fork published as **`print_bluetooth_thermal_plus`** (upstream: **print_bluetooth_thermal** by Andrés Pérez Melo).
+
+### Android
+- Run Bluetooth `write` / `flush` (and related methods) on a background thread to avoid **ANR** when `BluetoothSocket.flush()` blocks on the main isolate’s platform thread.
+- Use a plugin-scoped coroutine scope and cancel it on engine detach.
+- Fix ineffective `outputStream == null` statement in the `connect` branch (was a no-op).
+
+### Package
+- New Dart package name: `print_bluetooth_thermal_plus`; import paths updated accordingly. README documents credit to the original author and package.
+
 ## [1.1.9] – 2025-12-10
 - Updated to README.md.
 

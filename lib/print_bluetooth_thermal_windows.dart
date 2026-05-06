@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:win_ble/win_ble.dart';
 import 'package:win_ble/win_file.dart';
 
-import 'print_bluetooth_thermal.dart';
+import 'package:print_bluetooth_thermal_plus/print_bluetooth_thermal.dart';
 
 class PrintBluetoothThermalWindows {
   static bool _isInitialized = false;

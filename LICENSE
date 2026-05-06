@@ -1,6 +1,9 @@
 Note: This license has also been called the "New BSD License" or "Modified BSD License". See also the 2-clause BSD License.
 
-Copyright <YEAR> <COPYRIGHT HOLDER>
+Copyright (c) Andrés Pérez Melo and contributors (original print_bluetooth_thermal).
+Copyright (c) 2026 print_bluetooth_thermal_plus contributors.
+
+Redistributions must retain both copyright notices above when required by the original license.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 

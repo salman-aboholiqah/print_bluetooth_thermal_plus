@@ -20,10 +20,11 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.io.OutputStream
 import java.util.UUID
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 private const val TAG = "====> print: "
@@ -39,6 +40,9 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
   private lateinit var mContext: Context
   private lateinit var channel : MethodChannel
   private var state:Boolean = false
+
+  private val pluginJob = SupervisorJob()
+  private val pluginScope = CoroutineScope(pluginJob + Dispatchers.Main)
 
   //val pluginActivity: Activity = activity
   //private val application: Application = activity.application
@@ -100,22 +104,21 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
       }
       result.success(state)
     }else if (call.method == "connectionstatus") {
-      if(outputStream != null) {
-        try{
-          outputStream?.run {
-            write(" ".toByteArray())
-            result.success(true)
-            //Log.d(TAG, "paso yes coexion ")
-          }
-        }catch (e: Exception){
-          result.success(false)
-          outputStream = null
-          //mensajeToast("Dispositivo fue desconectado, reconecte")
-          //Log.d(TAG, "state print: ${e.message}")
-        }
-      }else{
+      if (outputStream == null) {
         result.success(false)
-        //Log.d(TAG, "no paso es false ")
+      } else {
+        pluginScope.launch {
+          val ok = withContext(Dispatchers.IO) {
+            try {
+              outputStream?.write(" ".toByteArray())
+              true
+            } catch (e: Exception) {
+              outputStream = null
+              false
+            }
+          }
+          result.success(ok)
+        }
       }
     } else if (call.method == "connect") {
       var macimpresora = call.arguments.toString();
@@ -125,92 +128,91 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
       }else{
         result.success(false)
       }
-      GlobalScope.launch(Dispatchers.Main) {
-        if(outputStream == null) {
+      pluginScope.launch {
+        if (outputStream == null) {
           outputStream = connect()?.also {
             //Log.d(TAG, "connected kt")
-            //result.success("true")
-            //Toast.makeText(this@MainActivity, "Impresora conectada", Toast.LENGTH_SHORT).show()
-          }.apply {
-            result.success(state)
-            //Log.d(TAG, "finalizo tk: conexion state:$state")
           }
-        }else{
-          //Log.d(TAG, "stream null kt: ")
-          outputStream == null;
+          result.success(state)
+        } else {
           result.success(false)
         }
       }
     }else if (call.method == "writebytes") {
       val lista: List<Int> = call.arguments as List<Int>
-    var bytes: ByteArray = "\n".toByteArray()
-
-    lista.forEach {
-        bytes += it.toByte()
-    }
-
-    if (outputStream != null) {
-        try {
-            val chunkSize = 16 * 1024 // 16 KB
-            val total = bytes.size
-            var offset = 0
-
-            outputStream?.run {
-                while (offset < total) {
-                    val end = minOf(offset + chunkSize, total)
-                    write(bytes, offset, end - offset)
-                    flush()
-                    offset = end
-                }
-                result.success(true)
-            }
-        } catch (e: Exception) {
-            result.success(false)
-            outputStream = null
-            Log.e(TAG, "Error al imprimir: ${e.message}", e)
-        }
-    } else {
+      if (outputStream == null) {
         result.success(false)
-    }
+      } else {
+        pluginScope.launch {
+          val success = withContext(Dispatchers.IO) {
+            try {
+              var bytes: ByteArray = "\n".toByteArray()
+              lista.forEach {
+                bytes += it.toByte()
+              }
+              val chunkSize = 16 * 1024 // 16 KB
+              val total = bytes.size
+              var offset = 0
+              val stream = outputStream
+              if (stream != null) {
+                while (offset < total) {
+                  val end = minOf(offset + chunkSize, total)
+                  stream.write(bytes, offset, end - offset)
+                  stream.flush()
+                  offset = end
+                }
+                true
+              } else {
+                false
+              }
+            } catch (e: Exception) {
+              Log.e(TAG, "Error al imprimir: ${e.message}", e)
+              outputStream = null
+              false
+            }
+          }
+          result.success(success)
+        }
+      }
     }else if (call.method == "printstring") {
       var stringllego: String = call.arguments.toString()
       //var lista = stringllego.split("*")
       //println("lista ${lista.toString()}")
-      if(outputStream != null) {
-        try{
-          var size:Int = 0
-          var texto:String = ""
-          var linea = stringllego.split("///")
-          //Log.d(TAG, "lista llego: ${linea.size}")
-          if(linea.size>1) {
-            size = linea[0].toInt()
-            texto = linea[1]
-            if (size < 1 || size > 5) size = 2
-          }else{
-            size = 2
-            texto = stringllego
-            //Log.d(TAG, "lista llego 2 texto: ${texto} size: $size")
-          }
-
-          //Log.d(TAG, "print text kt: ${texto} size: $size")
-          val charset = Charsets.UTF_8
-          val byteArray = texto.toByteArray(charset)
-
-          outputStream?.run {
-            write(setBytes.size[0])
-            write(setBytes.cancelar_chino)
-            write(setBytes.caracteres_escape)
-            write(setBytes.size[size])
-            write(texto.toByteArray(charset("ISO-8859-1")))
-            result.success(true)
-          }
-        }catch (e: Exception){
-          result.success(false)
-          outputStream = null
-          //mensajeToast("Dispositivo fue desconectado, reconecte")
-        }
-      }else{
+      if (outputStream == null) {
         result.success("false")
+      } else {
+        pluginScope.launch {
+          val success = withContext(Dispatchers.IO) {
+            try {
+              var size: Int = 0
+              var texto: String = ""
+              var linea = stringllego.split("///")
+              if (linea.size > 1) {
+                size = linea[0].toInt()
+                texto = linea[1]
+                if (size < 1 || size > 5) size = 2
+              } else {
+                size = 2
+                texto = stringllego
+              }
+              val stream = outputStream
+              if (stream != null) {
+                stream.write(setBytes.size[0])
+                stream.write(setBytes.cancelar_chino)
+                stream.write(setBytes.caracteres_escape)
+                stream.write(setBytes.size[size])
+                stream.write(texto.toByteArray(charset("ISO-8859-1")))
+                true
+              } else {
+                false
+              }
+            } catch (e: Exception) {
+              outputStream = null
+              false
+            }
+          }
+          result.success(success)
+        }
       }
     }else if (call.method == "writebytesChinese") {
       var lista: List<Int> = call.arguments as List<Int>
@@ -219,37 +221,40 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
       lista.forEach {
         bytes += it.toByte() //Log.d(TAG, "foreah: ${it}")
       }
-      if(outputStream != null) {
-        try{
-          outputStream?.run {
-            write(bytes)
-            result.success(true)
-          }
-        }catch (e: Exception){
-          result.success(false)
-          outputStream = null
-          //mensajeToast("Dispositivo fue desconectado, reconecte")
-          // Log.d(TAG, "state print: ${e.message}")
-          /*var ex:String = e.message.toString()
-          if(ex=="Broken pipe"){
-            Log.d(TAG, "Dispositivo fue desconectado reconecte: ")
-            mensajeToast("Dispositivo fue desconectado, reconecte")
-          }*/
-        }
-      }else{
+      if (outputStream == null) {
         result.success(false)
+      } else {
+        pluginScope.launch {
+          val success = withContext(Dispatchers.IO) {
+            try {
+              outputStream?.write(bytes)
+              true
+            } catch (e: Exception) {
+              outputStream = null
+              false
+            }
+          }
+          result.success(success)
+        }
       }
     }else if (call.method == "pairedbluetooths") {
       var lista:List<String> = dispositivosVinculados()
 
       result.success(lista)
     }else if(call.method == "disconnect"){
-      if(outputStream != null){
-        outputStream?.close()
-        outputStream = null
-        result.success(true);
-      }else{
-        result.success(true);
+      if (outputStream == null) {
+        result.success(true)
+      } else {
+        pluginScope.launch {
+          withContext(Dispatchers.IO) {
+            try {
+              outputStream?.close()
+            } catch (_: Exception) {
+            }
+            outputStream = null
+          }
+          result.success(true)
+        }
       }
     }else {
       result.notImplemented()
@@ -409,6 +414,7 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
 
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    pluginJob.cancel()
     channel.setMethodCallHandler(null)
   }
 }

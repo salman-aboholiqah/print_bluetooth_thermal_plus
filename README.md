@@ -1,6 +1,8 @@
-# print_bluetooth_thermal
+# print_bluetooth_thermal_plus
 
 ## Package to print tickets on 58mm or 80mm thermal printers on Android, iOS, macOS or Windows.
+
+This package is a **maintained fork** of [**print_bluetooth_thermal**](https://pub.dev/packages/print_bluetooth_thermal) by **Andrés Pérez Melo** ([GitHub](https://github.com/andresperezmelo/print_bluetooth_termal)). The original work and API design are credited to that project; this fork adds fixes (for example **Android ANR avoidance** by running Bluetooth `write` / `flush` work off the UI thread) and is published under a new package name so it can be released independently.
 
 This package emerged as an alternative to the current ones that use the location permission and Google Play
 blocks apps that don't explain what to use location permission for.
@@ -9,7 +11,7 @@ blocks apps that don't explain what to use location permission for.
 
 ## Getting Started
 
-* Import the package  [print_bluetooth_thermal](https://pub.dev/packages/print_bluetooth_thermal).
+* Import the package [print_bluetooth_thermal_plus](https://pub.dev/packages/print_bluetooth_thermal_plus) (or depend on it in `pubspec.yaml`).
 
 * If you want to print images, qr code, barcode use the package [esc_pos_utils_plus](https://pub.dev/packages/esc_pos_utils_plus).
 
@@ -40,7 +42,7 @@ blocks apps that don't explain what to use location permission for.
 1. Import the package
 
 ```dart
-import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:print_bluetooth_thermal_plus/print_bluetooth_thermal.dart';
 ```
 
 
