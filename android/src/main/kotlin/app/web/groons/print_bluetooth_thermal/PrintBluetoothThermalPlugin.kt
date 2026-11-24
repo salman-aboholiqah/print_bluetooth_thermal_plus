@@ -24,12 +24,24 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 
 private const val TAG = "====> print: "
 private var outputStream: OutputStream? = null
 private lateinit var mac: String
+
+/**
+ * Serializes access to the printer socket.
+ *
+ * Writes used to be serialized for free by running on the platform thread.
+ * Now that they run on Dispatchers.IO, two overlapping print calls would
+ * interleave their bytes on the socket and produce a garbled receipt, and a
+ * disconnect could close the stream mid-write.
+ */
+private val printerIoMutex = Mutex()
 
 /** PrintTestPlugin */
 class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
@@ -144,7 +156,7 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
         result.success(false)
       } else {
         pluginScope.launch {
-          val success = withContext(Dispatchers.IO) {
+          val success = onPrinterIo {
             try {
               var bytes: ByteArray = "\n".toByteArray()
               lista.forEach {
@@ -182,7 +194,7 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
         result.success("false")
       } else {
         pluginScope.launch {
-          val success = withContext(Dispatchers.IO) {
+          val success = onPrinterIo {
             try {
               var size: Int = 0
               var texto: String = ""
@@ -225,7 +237,7 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
         result.success(false)
       } else {
         pluginScope.launch {
-          val success = withContext(Dispatchers.IO) {
+          val success = onPrinterIo {
             try {
               outputStream?.write(bytes)
               true
@@ -246,7 +258,7 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
         result.success(true)
       } else {
         pluginScope.launch {
-          withContext(Dispatchers.IO) {
+          onPrinterIo {
             try {
               outputStream?.close()
             } catch (_: Exception) {
@@ -261,6 +273,10 @@ class PrintBluetoothThermalPlugin: FlutterPlugin, MethodCallHandler {
     }
   }
 
+
+  /** Runs a printer socket operation off the platform thread, one at a time. */
+  private suspend fun <T> onPrinterIo(block: suspend () -> T): T =
+    printerIoMutex.withLock { withContext(Dispatchers.IO) { block() } }
 
   private fun getBatteryLevel(): Int {
     val batteryLevel: Int
